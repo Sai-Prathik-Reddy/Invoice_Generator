@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#121024"/>
+      <stop offset="55%" stop-color="#271B5C"/>
+      <stop offset="100%" stop-color="#5B3FD9"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="24" y1="20" x2="104" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F7E3AA"/>
+      <stop offset="50%" stop-color="#E8C27A"/>
+      <stop offset="100%" stop-color="#B8892E"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <rect x="2" y="2" width="124" height="124" rx="26" stroke="url(#gold)" stroke-opacity="0.35" stroke-width="2"/>
+  <path d="M36 26H76L94 44V98C94 101.314 91.3137 104 88 104H36C32.6863 104 30 101.314 30 98V32C30 28.6863 32.6863 26 36 26Z" stroke="url(#gold)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M74 26V42C74 44.2091 75.7909 46 78 46H94" stroke="url(#gold)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M46 54H76M46 66H76M46 54H58C64.6274 54 70 59.3726 70 66C70 72.6274 64.6274 78 58 78H46L68 94" stroke="url(#gold)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
