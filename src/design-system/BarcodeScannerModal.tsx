@@ -11,9 +11,12 @@ import {
   Keyboard,
   RotateCcw,
   ZoomIn,
+  Volume2,
 } from 'lucide-react';
 import { Button, Input } from './components';
 import { scanCanvasForBarcodes } from './barcodeDecoder';
+import { announceItemScan } from '../core/soundbox';
+import { SoundboxSettingsModal } from './SoundboxSettingsModal';
 
 export function playScanFeedback(success = true) {
   try {
@@ -89,6 +92,7 @@ export function BarcodeScannerModal({
   const [manualCode, setManualCode] = useState('');
   const [scanCount, setScanCount] = useState(0);
   const [retryKey, setRetryKey] = useState(0);
+  const [soundboxModalOpen, setSoundboxModalOpen] = useState(false);
   const [lastScanned, setLastScanned] = useState<{
     code: string;
     name?: string;
@@ -138,6 +142,10 @@ export function BarcodeScannerModal({
       const itemName = getItemNameByBarcode ? getItemNameByBarcode(code) : undefined;
       setLastScanned({ code, name: itemName, time: now });
       setScanCount((prev) => prev + 1);
+
+      if (itemName) {
+        announceItemScan(itemName);
+      }
 
       onScan(code);
 
@@ -461,6 +469,15 @@ export function BarcodeScannerModal({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setSoundboxModalOpen(true)}
+              title="POS Soundbox Voice Settings"
+              className="p-2 rounded-xl border border-border/80 bg-muted/40 text-muted-foreground hover:text-gold cursor-pointer transition-all"
+            >
+              <Volume2 className="w-4 h-4" />
+            </button>
+
             {hasTorch && cameraActive ? (
               <button
                 type="button"
@@ -692,6 +709,12 @@ export function BarcodeScannerModal({
           100% { top: 92%; opacity: 0.85; }
         }
       `}</style>
+
+      {/* Embedded Soundbox Voice Configuration Modal */}
+      <SoundboxSettingsModal
+        open={soundboxModalOpen}
+        onClose={() => setSoundboxModalOpen(false)}
+      />
     </div>
   );
 }

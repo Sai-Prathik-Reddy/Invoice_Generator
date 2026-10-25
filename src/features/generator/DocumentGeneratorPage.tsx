@@ -12,12 +12,16 @@ import {
   Barcode as BarcodeIcon,
   ShoppingBag,
   Camera,
+  Printer,
+  Volume2,
 } from 'lucide-react';
 import { db } from '../../db/schema';
 import { useAppStore } from '../../app/useAppStore';
 import {
   BarcodeScannerModal,
   CatalogItemPickerModal,
+  CheckoutPaymentModal,
+  SoundboxSettingsModal,
   playScanFeedback,
   Button,
   GlassCard,
@@ -99,6 +103,10 @@ export function DocumentGeneratorPage({ editDocId }: { editDocId?: string }) {
   const [barcodeScannerOpen, setBarcodeScannerOpen] = useState(false);
   const [catalogPickerOpen, setCatalogPickerOpen] = useState(false);
   const [activeRowScanIdx, setActiveRowScanIdx] = useState<number | null>(null);
+
+  // Fast Checkout & Soundbox Modals
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [soundboxModalOpen, setSoundboxModalOpen] = useState(false);
 
   // Select default template
   useEffect(() => {
@@ -503,7 +511,53 @@ export function DocumentGeneratorPage({ editDocId }: { editDocId?: string }) {
   };
 
 
-  const handleSave = async (finalize: boolean) => {
+  const handleOpenCheckout = () => {
+    if (!values['client_name']?.trim()) {
+      toast.error('Please enter Client / Customer Name');
+      return;
+    }
+    if (items.every((r) => !r['item_name']?.trim())) {
+      toast.error('Please enter at least one line item');
+      return;
+    }
+    setCheckoutModalOpen(true);
+  };
+
+  const handleDirectPrint = async () => {
+    let url = previewPdfUrl;
+    if (!url) {
+      try {
+        const blob = await compilePdfToBlob({
+          definition: activeTemplate.draft_definition,
+          company: activeCompany,
+          docMeta: {
+            number: nextNumPreview,
+            status: 'draft',
+            issue_date: issueDate,
+            due_date: dueDate,
+            place_of_supply: placeOfSupply,
+            type_label: DOC_TYPE_LABELS[activeTemplate.doc_type],
+          },
+          values,
+          items,
+          computed,
+        });
+        url = URL.createObjectURL(blob);
+        setPreviewPdfUrl(url);
+      } catch (err) {
+        toast.error(`Direct print failed: ${(err as Error).message}`);
+        return;
+      }
+    }
+    const printWindow = window.open(url, '_blank');
+    printWindow?.print();
+  };
+
+  const handleSave = async (
+    finalize: boolean,
+    isPaid = true,
+    paymentDetails?: { paymentMode: string; amountTendered?: number; changeReturned?: number }
+  ) => {
     if (!values['client_name']?.trim()) {
       toast.error('Please enter Client / Customer Name');
       return;
@@ -534,6 +588,17 @@ export function DocumentGeneratorPage({ editDocId }: { editDocId?: string }) {
         });
       }
 
+      const mergedValues = {
+        ...values,
+        ...(paymentDetails
+          ? {
+              payment_mode: paymentDetails.paymentMode,
+              amount_tendered: String(paymentDetails.amountTendered ?? ''),
+              change_returned: String(paymentDetails.changeReturned ?? ''),
+            }
+          : {}),
+      };
+
       const saved = await saveOrFinalizeDocument({
         id: editDocId,
         company: activeCompany,
@@ -542,7 +607,7 @@ export function DocumentGeneratorPage({ editDocId }: { editDocId?: string }) {
         issueDate,
         dueDate,
         placeOfSupply,
-        values,
+        values: mergedValues,
         items,
         finalize,
         saveToCatalog: true,
@@ -571,10 +636,29 @@ export function DocumentGeneratorPage({ editDocId }: { editDocId?: string }) {
         }`}
         actions={
           <>
+            <Button
+              variant="outline"
+              onClick={() => setSoundboxModalOpen(true)}
+              className="shrink-0 border-gold/40 text-gold"
+              title="POS Soundbox Voice Settings"
+            >
+              <Volume2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Voice Soundbox</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDirectPrint}
+              className="shrink-0"
+              title="Print directly to receipt or A4 printer"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="sm:hidden">Print</span>
+              <span className="hidden sm:inline">Direct Print</span>
+            </Button>
             <Button variant="outline" onClick={handleRefreshPdfPreview} className="shrink-0">
               <Eye className="w-4 h-4" />
               <span className="sm:hidden">Preview</span>
-              <span className="hidden sm:inline">Preview Vector PDF</span>
+              <span className="hidden sm:inline">Preview PDF</span>
             </Button>
             <Button
               variant="secondary"
@@ -589,12 +673,12 @@ export function DocumentGeneratorPage({ editDocId }: { editDocId?: string }) {
             <Button
               variant="gold"
               disabled={submitting}
-              onClick={() => handleSave(true)}
+              onClick={handleOpenCheckout}
               className="shrink-0"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span className="sm:hidden">Finalize</span>
-              <span className="hidden sm:inline">Finalize & Generate PDF</span>
+              <span className="sm:hidden">Pay & Finalize</span>
+              <span className="hidden sm:inline">Checkout & Finalize</span>
             </Button>
           </>
         }
@@ -1105,6 +1189,34 @@ export function DocumentGeneratorPage({ editDocId }: { editDocId?: string }) {
           setActiveRowScanIdx(null);
           setBarcodeScannerOpen(true);
         }}
+      />
+
+      {/* Fast Checkout & Payment Drawer Modal */}
+      <CheckoutPaymentModal
+        open={checkoutModalOpen}
+        onClose={() => setCheckoutModalOpen(false)}
+        grandTotal={String(computed.doc['grand_total'] || '0.00')}
+        companyName={activeCompany?.name || 'Store'}
+        companyUpiVpa={activeCompany?.upi?.vpa}
+        clientName={values['client_name']}
+        clientPhone={values['client_phone']}
+        invoiceNumber={nextNumPreview}
+        issueDate={issueDate}
+        items={items.map((r) => ({
+          name: r['item_name'] || 'Item',
+          qty: r['qty'] || '1',
+          rate: r['rate'] || '0',
+        }))}
+        onFinalizeInvoice={async (isPaid, paymentDetails) => {
+          await handleSave(true, isPaid, paymentDetails);
+        }}
+        onDirectPrint={handleDirectPrint}
+      />
+
+      {/* POS Soundbox Voice Settings Modal */}
+      <SoundboxSettingsModal
+        open={soundboxModalOpen}
+        onClose={() => setSoundboxModalOpen(false)}
       />
     </div>
   );

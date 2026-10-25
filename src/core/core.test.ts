@@ -216,4 +216,129 @@ describe('INGEN Core Engine', () => {
     expect(validateUpcAChecksum('012345678905')).toBe(true);
     expect(validateUpcAChecksum('012345678906')).toBe(false);
   });
+
+  it('formats multilingual Soundbox announcements and WhatsApp invoice receipts with UPI links', async () => {
+    const { formatBillAnnouncementText } = await import('./soundbox');
+    const { formatWhatsAppInvoiceMessage } = await import('../features/share/whatsappShare');
+
+    // Test Soundbox Voice announcements
+    expect(formatBillAnnouncementText('435', 'en-IN')).toBe('Bill total: 435 Rupees');
+    expect(formatBillAnnouncementText('435', 'hi-IN')).toBe('बिल राशि: 435 रुपये');
+    expect(formatBillAnnouncementText('435', 'te-IN')).toBe('బిల్లు మొత్తం: 435 రూపాయలు');
+    expect(formatBillAnnouncementText('435', 'ta-IN')).toBe('பில் தொகை: 435 ரூபாய்');
+    expect(formatBillAnnouncementText('435', 'kn-IN')).toBe('ಬಿಲ್ ಮೊತ್ತ: 435 ರೂಪಾಯಿ');
+    expect(formatBillAnnouncementText('435', 'mr-IN')).toBe('बिल रक्कम: 435 रुपये');
+
+    // Test WhatsApp Invoice Message with UPI Link and Store Footer
+    const msg = formatWhatsAppInvoiceMessage({
+      customerName: 'Rajesh',
+      companyName: 'Sharma Grocery Store',
+      invoiceNumber: 'INV-26-27-0042',
+      date: '2026-10-25',
+      grandTotal: '435.00',
+      isPaid: false,
+      upiVpa: 'sharma@upi',
+      items: [
+        { name: 'Parle-G Biscuit', qty: '2', rate: '10' },
+        { name: 'Fortune Oil 1L', qty: '1', rate: '155' },
+      ],
+      language: 'en-IN',
+    });
+
+    expect(msg).toContain('Sharma Grocery Store');
+    expect(msg).toContain('INV-26-27-0042');
+    expect(msg).toContain('₹435.00');
+    expect(msg).toContain('upi://pay?pa=sharma@upi');
+    expect(msg).toContain('Thank you for shopping with Sharma Grocery Store!');
+
+    // Test Telugu WhatsApp Receipt
+    const teluguMsg = formatWhatsAppInvoiceMessage({
+      customerName: 'Ramesh',
+      companyName: 'Sri Balaji Traders',
+      invoiceNumber: 'INV-001',
+      date: '2026-10-25',
+      grandTotal: '250.00',
+      isPaid: true,
+      items: [{ name: 'Rice 1kg', qty: '1', rate: '250' }],
+      language: 'te-IN',
+    });
+    expect(teluguMsg).toContain('నమస్కారం Ramesh గారు');
+    expect(teluguMsg).toContain('Sri Balaji Traders లో కొనుగోలు చేసినందుకు ధన్యవాదాలు');
+  });
+
+  it('exports and parses Inventory and Clients CSV files accurately with escaping', async () => {
+    const {
+      exportInventoryToCsv,
+      parseInventoryCsv,
+      exportClientsToCsv,
+      parseClientsCsv,
+    } = await import('../features/catalog/csvService');
+
+    // Test Inventory CSV round-trip
+    const testItems = [
+      {
+        id: 'itm_1',
+        company_id: 'cmp_1',
+        name: 'Basmati Rice, Super 1kg',
+        barcode: '8901030383700',
+        rate: '145.00',
+        tax_rate: '5',
+        unit: 'KG',
+        hsn_sac: '1006',
+        stock_qty: 45,
+        low_stock_threshold: 10,
+        price_includes_tax: false,
+        custom_fields: [],
+        use_count: 5,
+        created_at: 1000,
+        updated_at: 1000,
+      },
+    ];
+
+    const csvOutput = exportInventoryToCsv(testItems);
+    expect(csvOutput).toContain('"Basmati Rice, Super 1kg"');
+    expect(csvOutput).toContain('8901030383700');
+    expect(csvOutput).toContain('45');
+
+    const parsedItems = parseInventoryCsv(csvOutput);
+    expect(parsedItems.length).toBe(1);
+    expect(parsedItems[0]!.name).toBe('Basmati Rice, Super 1kg');
+    expect(parsedItems[0]!.barcode).toBe('8901030383700');
+    expect(parsedItems[0]!.stock_qty).toBe(45);
+    expect(parsedItems[0]!.low_stock_threshold).toBe(10);
+
+    // Test Clients CSV
+    const testClients = [
+      {
+        id: 'cli_1',
+        company_id: 'cmp_1',
+        name: 'Priya Traders',
+        gstin: '36AAAAA0000A1Z5',
+        phone: '9876543210',
+        billing_address: {
+          line1: 'Shop 4, Market Road',
+          city: 'Hyderabad',
+          state: 'Telangana',
+          state_code: '36',
+          pincode: '500001',
+          country: 'India',
+        },
+        custom_fields: [],
+        use_count: 3,
+        created_at: 1000,
+        updated_at: 1000,
+      },
+    ];
+
+    const clientCsv = exportClientsToCsv(testClients);
+    expect(clientCsv).toContain('Priya Traders');
+    expect(clientCsv).toContain('36AAAAA0000A1Z5');
+    expect(clientCsv).toContain('9876543210');
+
+    const parsedClients = parseClientsCsv(clientCsv);
+    expect(parsedClients.length).toBe(1);
+    expect(parsedClients[0]!.name).toBe('Priya Traders');
+    expect(parsedClients[0]!.gstin).toBe('36AAAAA0000A1Z5');
+    expect(parsedClients[0]!.phone).toBe('9876543210');
+  });
 });

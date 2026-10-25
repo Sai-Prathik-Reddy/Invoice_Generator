@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Package,
 } from 'lucide-react';
 import { db } from '../db/schema';
 import { useAppStore } from '../app/useAppStore';
@@ -30,8 +31,9 @@ import { PwaInstallPromptModal } from '../pwa/PwaInstallPromptModal';
 const DESKTOP_NAV = [
   { to: '/', label: 'Home', icon: Home, end: true },
   { to: '/documents', label: 'Documents', icon: FileText },
+  { to: '/inventory', label: 'Inventory', icon: Package },
+  { to: '/clients', label: 'Clients', icon: Users },
   { to: '/templates', label: 'Templates', icon: LayoutTemplate },
-  { to: '/catalog', label: 'Clients & Items', icon: Users },
   { to: '/backup', label: 'Backup & Vault', icon: ShieldCheck },
   { to: '/settings', label: 'Settings', icon: Settings },
   { to: '/dev/design', label: 'Design System', icon: Palette },
@@ -310,7 +312,7 @@ export function AppShell() {
           </button>
 
           <NavLink
-            to="/templates"
+            to="/inventory"
             className={({ isActive }) =>
               cn(
                 'flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[11px] font-medium',
@@ -318,8 +320,8 @@ export function AppShell() {
               )
             }
           >
-            <LayoutTemplate className="w-5 h-5" />
-            <span>Templates</span>
+            <Package className="w-5 h-5" />
+            <span>Inventory</span>
           </NavLink>
 
           <button
@@ -388,7 +390,8 @@ export function AppShell() {
               </button>
             </div>
             {[
-              { to: '/catalog', label: 'Clients & Items Directory', icon: Users },
+              { to: '/templates', label: 'Invoice Templates Studio', icon: LayoutTemplate },
+              { to: '/clients', label: 'Clients & Customers Directory', icon: Users },
               { to: '/backup', label: 'Encrypted Backup & Secure Vault', icon: ShieldCheck },
               { to: '/settings', label: 'Business Profile & Settings', icon: Settings },
               { to: '/dev/design', label: 'Design System Showcase', icon: Palette },

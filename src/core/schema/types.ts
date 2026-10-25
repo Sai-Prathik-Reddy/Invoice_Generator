@@ -125,6 +125,8 @@ export const ItemSchema = z.object({
   rate: DecimalSchema.default('0'),
   tax_rate: DecimalSchema.default('18'),
   price_includes_tax: z.boolean().default(false),
+  stock_qty: z.number().default(0),
+  low_stock_threshold: z.number().default(5),
   custom_fields: z.array(CustomFieldValueSchema).default([]),
   use_count: z.number().default(0),
   last_used_at: z.number().optional(),

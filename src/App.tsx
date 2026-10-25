@@ -26,6 +26,8 @@ import {
   SettingsPage,
   VaultLockScreen,
 } from './features/catalog/CatalogBackupAndSettings';
+import { InventoryPage } from './features/catalog/InventoryPage';
+import { ClientsPage } from './features/catalog/ClientsPage';
 import { useAppStore } from './app/useAppStore';
 
 function DocumentDetailRoute() {
@@ -78,7 +80,9 @@ export function App() {
           <Route path="/templates" element={<TemplatesGalleryPage />} />
           <Route path="/templates/new" element={<CreateTemplateWizardPage />} />
           <Route path="/templates/:id/builder" element={<TemplateBuilderRoute />} />
-          <Route path="/catalog" element={<CatalogPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/catalog" element={<InventoryPage />} />
           <Route path="/backup" element={<BackupAndVaultPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/dev/design" element={<DesignSystemShowcasePage />} />

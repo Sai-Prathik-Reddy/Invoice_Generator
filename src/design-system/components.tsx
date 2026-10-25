@@ -530,6 +530,9 @@ export function CloudTooltip({
 export { BrandColorCustomizer } from './BrandColorCustomizer';
 export { BarcodeScannerModal, playScanFeedback } from './BarcodeScannerModal';
 export { CatalogItemPickerModal } from './CatalogItemPickerModal';
+export { SoundboxSettingsModal } from './SoundboxSettingsModal';
+export { CheckoutPaymentModal } from './CheckoutPaymentModal';
+
 
 
 

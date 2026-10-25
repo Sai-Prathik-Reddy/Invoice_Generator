@@ -303,11 +303,15 @@ export async function saveOrFinalizeDocument(params: {
           const itemName = (row['item_name'] || '').trim();
           if (!itemName) continue;
           const match = existingItems.find((i) => i.name.toLowerCase() === itemName.toLowerCase());
+          const qtySold = Number(row['qty'] || '1');
           if (match) {
             match.use_count = (match.use_count || 0) + (params.finalize ? 1 : 0);
             match.last_used_at = now;
             if (!match.barcode && row['barcode']) {
               match.barcode = String(row['barcode']).trim();
+            }
+            if (params.finalize && !isNaN(qtySold) && qtySold > 0 && typeof match.stock_qty === 'number') {
+              match.stock_qty = Math.max(0, match.stock_qty - qtySold);
             }
             await db.items.put(match);
           } else {
@@ -321,6 +325,8 @@ export async function saveOrFinalizeDocument(params: {
               rate: row['rate'] || '0',
               tax_rate: row['gst_rate'] || '18',
               price_includes_tax: params.definition.config.tax_mode === 'inclusive',
+              stock_qty: 0,
+              low_stock_threshold: 5,
               custom_fields: [],
               use_count: params.finalize ? 1 : 0,
               last_used_at: now,
