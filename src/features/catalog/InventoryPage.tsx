@@ -17,6 +17,12 @@ import {
   CheckCircle2,
   X,
   FileSpreadsheet,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  FileDown,
+  Check,
+  Info,
 } from 'lucide-react';
 import { db } from '../../db/schema';
 import { useAppStore } from '../../app/useAppStore';
@@ -34,6 +40,9 @@ import {
   exportInventoryToCsv,
   parseInventoryCsv,
   downloadFile,
+  downloadInventorySampleCsv,
+  getInventorySampleCsvTemplate,
+  INVENTORY_CSV_COLUMNS,
 } from './csvService';
 import { toast } from 'sonner';
 
@@ -75,7 +84,14 @@ export function InventoryPage() {
   const [csvImportModalOpen, setCsvImportModalOpen] = useState(false);
   const [csvRawText, setCsvRawText] = useState('');
   const [csvParsedCount, setCsvParsedCount] = useState(0);
+  const [showColumnSpecs, setShowColumnSpecs] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const parsedPreviewItems = useMemo(() => {
+    if (!csvRawText.trim()) return [];
+    return parseInventoryCsv(csvRawText).slice(0, 4);
+  }, [csvRawText]);
 
   // Query Items scoped to active company
   const items =
@@ -300,6 +316,7 @@ export function InventoryPage() {
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setSelectedFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
@@ -307,9 +324,19 @@ export function InventoryPage() {
         setCsvRawText(content);
         const parsed = parseInventoryCsv(content);
         setCsvParsedCount(parsed.length);
+        toast.success(`Loaded ${file.name} (${parsed.length} products found)`);
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleFillSampleCsv = () => {
+    const sample = getInventorySampleCsvTemplate();
+    setCsvRawText(sample);
+    setSelectedFileName('sample_inventory_template.csv');
+    const parsed = parseInventoryCsv(sample);
+    setCsvParsedCount(parsed.length);
+    toast.success('Loaded sample grocery inventory (8 items)');
   };
 
   const handleConfirmCsvImport = async () => {
@@ -342,6 +369,7 @@ export function InventoryPage() {
     toast.success(`Imported ${parsed.length} products into inventory!`);
     setCsvImportModalOpen(false);
     setCsvRawText('');
+    setSelectedFileName(null);
   };
 
   return (
@@ -896,86 +924,259 @@ export function InventoryPage() {
 
       {/* CSV Import Modal */}
       {csvImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="relative w-full max-w-lg rounded-2xl glass-chrome border border-border p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-border/80 pb-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs">
+          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl glass-chrome border border-border p-5 space-y-4 overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-border/80 pb-3">
               <h3 className="font-display font-bold text-base flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-primary" />
-                <span>Import Inventory from CSV</span>
+                <FileSpreadsheet className="w-5 h-5 text-primary" />
+                <span>Import Inventory Products from CSV</span>
               </h3>
               <button
                 type="button"
-                onClick={() => setCsvImportModalOpen(false)}
-                className="p-1 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setCsvImportModalOpen(false);
+                  setSelectedFileName(null);
+                }}
+                className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Select or paste a CSV file containing columns like <code className="text-gold">Name, Barcode, Rate, GST Rate, Unit, HSN, Stock</code>.
-            </p>
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-xs">
+              {/* Quick Template Download Banner */}
+              <div className="rounded-xl border border-gold/30 bg-gold/5 p-3.5 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="space-y-0.5">
+                    <span className="font-semibold text-foreground flex items-center gap-1.5 text-xs">
+                      <Sparkles className="w-3.5 h-3.5 text-gold" />
+                      <span>Ready-to-use CSV Sample Template</span>
+                    </span>
+                    <p className="text-[11px] text-muted-foreground">
+                      Download our pre-structured template formatted for Microsoft Excel, Google Sheets, or Apple Numbers.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      variant="gold"
+                      size="sm"
+                      onClick={downloadInventorySampleCsv}
+                      className="text-xs h-8"
+                    >
+                      <FileDown className="w-3.5 h-3.5 mr-1" />
+                      <span>Download Template (.csv)</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleFillSampleCsv}
+                      className="text-xs h-8 border-gold/40 text-gold hover:bg-gold/10"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 mr-1 text-gold" />
+                      <span>Fill Sample Data</span>
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
-            <div className="flex items-center gap-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,text/csv"
-                onChange={handleFileSelected}
-                className="hidden"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs"
-              >
-                <Upload className="w-3.5 h-3.5 mr-1" />
-                <span>Upload CSV File</span>
-              </Button>
-              {csvParsedCount > 0 && (
-                <span className="text-xs text-emerald-400 font-semibold font-mono">
-                  ✓ {csvParsedCount} valid items parsed
-                </span>
+              {/* Column Structure Guidelines Accordion */}
+              <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Info className="w-3.5 h-3.5 text-primary" />
+                    <span>Expected Columns</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowColumnSpecs(!showColumnSpecs)}
+                    className="flex items-center gap-1 text-[11px] text-gold hover:underline cursor-pointer"
+                  >
+                    <span>{showColumnSpecs ? 'Hide Guidelines' : 'View Guidelines & Examples'}</span>
+                    {showColumnSpecs ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+                </div>
+
+                {/* Column Badges */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {INVENTORY_CSV_COLUMNS.map((col) => (
+                    <span
+                      key={col.key}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] ${
+                        col.required
+                          ? 'bg-gold/15 text-gold border border-gold/40 font-semibold'
+                          : 'bg-muted text-muted-foreground border border-border/80'
+                      }`}
+                    >
+                      <span>{col.label}</span>
+                      {col.required && <span className="text-amber-400 font-bold">*</span>}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Collapsible Column Guide Table */}
+                {showColumnSpecs && (
+                  <div className="mt-2.5 overflow-x-auto rounded-lg border border-border bg-black/40 p-2">
+                    <table className="w-full text-left text-[11px]">
+                      <thead>
+                        <tr className="border-b border-border/60 text-muted-foreground">
+                          <th className="pb-1.5 font-semibold">Column Name</th>
+                          <th className="pb-1.5 font-semibold">Requirement</th>
+                          <th className="pb-1.5 font-semibold">Example</th>
+                          <th className="pb-1.5 font-semibold">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 font-mono text-[10px]">
+                        {INVENTORY_CSV_COLUMNS.map((col) => (
+                          <tr key={col.key}>
+                            <td className="py-1.5 font-semibold text-foreground">{col.label}</td>
+                            <td className="py-1.5">
+                              {col.required ? (
+                                <span className="text-emerald-400 font-sans font-bold">Required</span>
+                              ) : (
+                                <span className="text-muted-foreground font-sans">Optional</span>
+                              )}
+                            </td>
+                            <td className="py-1.5 text-gold">{col.example}</td>
+                            <td className="py-1.5 font-sans text-muted-foreground">{col.description}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload File and Status */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-foreground">Upload CSV File</label>
+                  {selectedFileName && (
+                    <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      <span>{selectedFileName}</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={handleFileSelected}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-xs h-9"
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1" />
+                    <span>Choose CSV File from Computer / Phone</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Direct Paste Area */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-foreground">
+                    Or Paste CSV Data Directly:
+                  </label>
+                  {csvParsedCount > 0 && (
+                    <span className="text-[11px] text-emerald-400 font-semibold font-mono">
+                      ✓ {csvParsedCount} items parsed
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  rows={5}
+                  value={csvRawText}
+                  onChange={(e) => {
+                    setCsvRawText(e.target.value);
+                    const parsed = parseInventoryCsv(e.target.value);
+                    setCsvParsedCount(parsed.length);
+                  }}
+                  placeholder="Item Name,Barcode,Selling Rate,GST Rate (%),Unit,HSN/SAC,Stock Quantity,Low Stock Alert Level&#10;India Gate Basmati Rice 1kg,8901030383700,145.00,5,KG,1006,50,10"
+                  className="w-full rounded-xl border border-border bg-black/30 p-2.5 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
+                />
+              </div>
+
+              {/* Live Parsed Preview Table */}
+              {parsedPreviewItems.length > 0 && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-emerald-300 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Data Preview (First {parsedPreviewItems.length} of {csvParsedCount} Items)</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      Ready to import
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto rounded-lg border border-border/80 bg-black/40">
+                    <table className="w-full text-left text-[11px]">
+                      <thead>
+                        <tr className="border-b border-border/80 text-muted-foreground text-[10px]">
+                          <th className="p-2">Item Name</th>
+                          <th className="p-2">Barcode</th>
+                          <th className="p-2">Rate</th>
+                          <th className="p-2">GST</th>
+                          <th className="p-2">Unit</th>
+                          <th className="p-2">Stock</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 font-mono text-[10px]">
+                        {parsedPreviewItems.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-muted/20">
+                            <td className="p-2 font-medium text-foreground truncate max-w-[150px]">{item.name}</td>
+                            <td className="p-2 text-sky-300">{item.barcode || '—'}</td>
+                            <td className="p-2 text-gold font-bold">₹{item.rate}</td>
+                            <td className="p-2">{item.tax_rate}%</td>
+                            <td className="p-2">{item.unit}</td>
+                            <td className="p-2 text-emerald-400 font-bold">{item.stock_qty}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">
-                Or paste CSV contents directly:
-              </label>
-              <textarea
-                rows={6}
-                value={csvRawText}
-                onChange={(e) => {
-                  setCsvRawText(e.target.value);
-                  const parsed = parseInventoryCsv(e.target.value);
-                  setCsvParsedCount(parsed.length);
-                }}
-                placeholder="Item Name,Barcode,Rate,GST Rate,Unit,HSN,Stock Quantity..."
-                className="w-full rounded-xl border border-border bg-muted/40 p-3 font-mono text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-gold"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/80">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setCsvImportModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="gold"
-                size="sm"
-                disabled={csvParsedCount === 0}
-                onClick={handleConfirmCsvImport}
-              >
-                Import {csvParsedCount} Items
-              </Button>
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-border/80 shrink-0">
+              <span className="text-xs text-muted-foreground font-mono">
+                {csvParsedCount > 0 ? `${csvParsedCount} items ready` : 'No items yet'}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setCsvImportModalOpen(false);
+                    setSelectedFileName(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="gold"
+                  size="sm"
+                  disabled={csvParsedCount === 0}
+                  onClick={handleConfirmCsvImport}
+                >
+                  Import {csvParsedCount > 0 ? `${csvParsedCount} Products` : 'Products'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

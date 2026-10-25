@@ -272,7 +272,44 @@ describe('INGEN Core Engine', () => {
       parseInventoryCsv,
       exportClientsToCsv,
       parseClientsCsv,
+      getInventorySampleCsvTemplate,
+      getClientsSampleCsvTemplate,
     } = await import('../features/catalog/csvService');
+
+    // Test Sample Inventory Template Generation and Parsing
+    const inventorySample = getInventorySampleCsvTemplate();
+    expect(inventorySample).toContain('Item Name,Barcode,Selling Rate,GST Rate (%),Unit,HSN/SAC,Stock Quantity,Low Stock Alert Level');
+    expect(inventorySample).toContain('India Gate Basmati Rice 1kg');
+    expect(inventorySample).toContain('8901030383700');
+    expect(inventorySample).toContain('145.00');
+
+    const parsedSampleItems = parseInventoryCsv(inventorySample);
+    expect(parsedSampleItems.length).toBe(8);
+    expect(parsedSampleItems[0]!.name).toBe('India Gate Basmati Rice 1kg');
+    expect(parsedSampleItems[0]!.barcode).toBe('8901030383700');
+    expect(parsedSampleItems[0]!.rate).toBe('145.00');
+    expect(parsedSampleItems[0]!.tax_rate).toBe('5');
+    expect(parsedSampleItems[0]!.unit).toBe('KG');
+    expect(parsedSampleItems[0]!.hsn_sac).toBe('1006');
+    expect(parsedSampleItems[0]!.stock_qty).toBe(50);
+    expect(parsedSampleItems[0]!.low_stock_threshold).toBe(10);
+
+    // Test Sample Clients Template Generation and Parsing
+    const clientsSample = getClientsSampleCsvTemplate();
+    expect(clientsSample).toContain('Client Name,GSTIN,Phone Number,Billing Address,State Code');
+    expect(clientsSample).toContain('Ramesh Trading Co');
+    expect(clientsSample).toContain('36AAAAA0000A1Z5');
+
+    const parsedSampleClients = parseClientsCsv(clientsSample);
+    expect(parsedSampleClients.length).toBe(5);
+    expect(parsedSampleClients[0]!.name).toBe('Ramesh Trading Co');
+    expect(parsedSampleClients[0]!.gstin).toBe('36AAAAA0000A1Z5');
+    expect(parsedSampleClients[0]!.phone).toBe('9876543210');
+    expect(parsedSampleClients[0]!.state_code).toBe('36');
+    // Test B2C client without GSTIN
+    expect(parsedSampleClients[1]!.name).toBe('Priya Sharma');
+    expect(parsedSampleClients[1]!.gstin).toBeUndefined();
+    expect(parsedSampleClients[1]!.phone).toBe('9123456780');
 
     // Test Inventory CSV round-trip
     const testItems = [
